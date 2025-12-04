@@ -84,18 +84,21 @@ def pad(value, bs=BLOCKSIZE):
 
 
 def encrypt(value, key):
-    iv = Random.new().read(BLOCKSIZE)
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    padded_value = pad(value)
-    return iv + cipher.encrypt(padded_value)
+    key = key[:32]  # AES-256 key size
+    cipher = AES.new(key, AES.MODE_GCM)  # secure mode
+    ciphertext, tag = cipher.encrypt_and_digest(value.encode())
+
+    return {
+        "nonce": cipher.nonce,
+        "ciphertext": ciphertext,
+        "tag": tag
+    }
 
 
-def decrypt(value, key):
-    iv = value[:BLOCKSIZE]
-    decrypt_value = value[BLOCKSIZE:]
-    cipher = AES.new(key, AES.MODE_CBC, iv)
-    decrypted = cipher.decrypt(decrypt_value)
-    return unpad(decrypted)
+def decrypt(data, key):
+    key = key[:32]
+    cipher = AES.new(key, AES.MODE_GCM, nonce=data["nonce"])
+    return cipher.decrypt_and_verify(data["ciphertext"], data["tag"]).decode()
 
 
 def rp(command):
